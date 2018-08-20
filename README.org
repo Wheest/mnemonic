@@ -60,7 +60,7 @@ base36_to_dec_dict = dict((c, i) for i, c in enumerate(base36))
 dec_to_base36_dict = dict((i, c) for i, c in enumerate(base36))
 
 base36_address = "rs7ce36jsj24ogfw"
-#base36_address = "vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd" # (onionv3 address)
+base36_address = "vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd" # (onionv3 address)
 
 base10_address = base_n_to_dec(base36_address, 36, base36_to_dec_dict)
 
@@ -90,6 +90,7 @@ Finally let's convert our Ricochet address to base2048
 
 #+BEGIN_SRC python :results output :session convert
 base2048_address = dec_to_base_n(base10_address, 2048, dec_to_base2048_dict)
+print(base10_address)
 print(base2048_address)
 print(len(base2048_address))
 # returns ['agree', 'pipe', 'dry', 'song', 'piece', 'bind', 'better', 'pole']
@@ -99,12 +100,14 @@ print(len(base2048_address))
 reverse_verify = base_n_to_dec(base2048_address, 2048, base2048_to_dec_dict)
 reverse_verify = dec_to_base_n(reverse_verify, 36, dec_to_base36_dict)
 reverse_verify = ''.join(reverse_verify)
+
 assert(base36_address == reverse_verify)
 #+END_SRC
 
 #+RESULTS:
-: ['agree', 'pipe', 'dry', 'song', 'piece', 'bind', 'better', 'pole']
-: 8
+: 1260709712996318955898685272226231504720057513191589823776137029904096611564534973626421
+: ['access', 'cat', 'pig', 'erase', 'suggest', 'tumble', 'enemy', 'bonus', 'client', 'dentist', 'offer', 'kitten', 'topple', 'tired', 'lake', 'push', 'ocean', 'version', 'solid', 'virus', 'toddler', 'soft', 'kite', 'eternal', 'exit', 'faint', 'allow']
+: 27
 
 Okay then, what do we have here now?  An 8 word long phrase, replacing a 16 character long string.  Is this an improvement from a usability standpoint?
 
@@ -145,3 +148,17 @@ print(len(base56_address))
 In the encoding, our Ricochet format address is now 15 characters, down from 16.  Our OnionV3 address is 50 characters, down from 56.  It is clear that the length reduction is not worth the user-side complexity of including capital letters.
 * Conclusion 
 The problem of having human-usable unique identifiers in a decentralised system is an open question, and this work attempts to explore some of the possibilities.  Using some sort of decentralised DNS system such as NameCoin or Blockstack is also a possibility, but creates a bit-trail that some users might be unwilling to make.
+* Addendum
+After sharing this post with the cwtch community, I was directed to a [[https://github.com/ricochet-im/ricochet/issues/128#issuecomment-107001948][previous exploration of the idea]] from SJL.  Some of the conclusions were similar, however with an interesting additional component.
+
+This involved using a different word list for each word in a mnemonic, i.e. the first is chosen from an adjective list, the next to a noun, then verb, etc.  This would form something like a sentence, as can be seen in SJL's examples:
+
+#+BEGIN_SRC sh
+the quick fire open the usual dais 
+the fluid ball line the true bag 
+the close seal pay the black coil 
+the gay eft burn the angry fart 
+the warm bank call the live jest 
+#+END_SRC
+
+Again, since words lists might not be feasible for representing long addresses, the point is moot.  However, with further research on real-world usability, it might be an interesting system to implement in situations where fewer bits are needed.
