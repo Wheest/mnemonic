@@ -1,42 +1,53 @@
 #+TITLE: Mnemonic
 #+STARTUP: content
-** Motivation
-For privacy preserving technology to see widespread adoption, it must be accessible.
+#+LAYOUT: post
+#+TAGS: crypto security python privacy
+#+liquid: enabled
+* Motivation
+In order for privacy preserving technology to see widespread adoption, it must be accessible.
 
-One of the key problems is how to handle identity.  In a centralised system, the authority can be in charge of what name (e.g. mobile phone number, web domain) is associated with what identity (person, server).  However, in decentralised ones, this is not as easy.
+One of the key problems in making this technology accessible is the question of how to handle identity.  In a centralised system, some authority can be in charge of which identifiers are associated with which identities.  For example, Google runs Gmail, and keep track of which user owns what username.  To create an account you ask them for one, such as ~arrakis@gmail.com~.  They will look up their list of previously registered usernames, and tell you that someone else already has it.  Finally, you find an unallocated username ~arrakis1729@gmail.com~, which Gmail grants you.  From that point forward, if someone wants to contact you they need your username, then send you their message via Google.
 
-Messaging systems such as [[https://ricochet.im/][Ricochet]] and [[https://cwtch.im/][Cwtch]] purport to be privacy preserving protocols.  However, identifiers are not easy for humans to read or remember.
+In decentralised systems however this poses some challenges.  A global table of registered usernames is a complex engineering challenge. 
+- How is it stored and shared? 
+- How does one register new names? 
+- What happens if two people register names at almost the same time?
+- How do identifiers correspond to identities 
 
-This document looks at some ways that addresses could be made more readable, by converting base64 encoded strings into a base-2048 encoded string.  Taking a cue from [[https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki][BIP-0039]], digits in base-2048b are represented by words.
+A sensible alternative is to stick with public-private key pairs, which serve the dual role of acting as both identity and encryption methods.
+Messaging systems such as [[https://ricochet.im/][Ricochet]] and [[https://cwtch.im/][Cwtch]] purport to be decentralised privacy preserving communication protocols, which handle identity by giving users a pseudorandom name associated with their public key.  However, these identifiers are not easy for humans to read or remember for example ~ricochet:rs7ce36jsj24ogfw~.
+
+This document looks at some ways in which these addresses could be made more usable, by converting our address into a base-2048 encoded string.  Taking a cue from [[https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki][BIP-0039]], digits in base-2048 are represented by words.  For a reminder of what numerical bases are, refer to [[http://www.cplusplus.com/doc/hex][this helpful post]].  We choose the words from an arbitrary list, in alphabetical order.
 
 For example, the base-2048 representation of the decimal digit ~1~ is ~ability~.  Below is a table with further examples:
 
 | Base-10     | Base-2048             |
 |-------------+-----------------------|
+| ~0~         | ~abandon~             |
 | ~1~         | ~ability~             |
 | ~1729~      | ~subway~              |
 | ~2047~      | ~zoo~                 |
 | ~2048~      | ~ability abandon~     |
 | ~100000000~ | ~actual stuff cactus~ |
 
-The full list of words used in this example can be seen [[english.txt]].  It is worth noting that [[https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki][BIP-0039]] used the words as a source of human readable entropy for generating private keys (the word list dubbed a "seed phrase"), and should never be shared.  One can use an arbitrary word list, as long as one knows what encoding one is using.  Thus there are [[https://github.com/bitcoin/bips/blob/master/bip-0039/bip-0039-wordlists.md][word-lists for multiple languages]]. 
+The full list of words used in this example can be seen in [[https://github.com/Wheest/mnemonic/blob/master/english.txt][english.txt]].  
 
-However, in our context, since identifiers are supposed to be shared, having different parties using different word list creates a potential for error.  Settling on using one list of English words might be viewed as [[https://en.wiktionary.org/wiki/Anglocentrism][anglocentrism]].  This issue is left open for discussion.
-** Conversion of Ricochet addresses
-Let us take an example of a Ricochet addresses in our base2048 format.  An example from the [[https://ricochet.im/][Ricochet website]] is ~ricochet:rs7ce36jsj24ogfw~.  Let us assume that it is encoded in base-36 (decimal digits + lower-case ASCII letters), and take the 16 characters after the colon.
+It is worth noting that [[https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki][BIP-0039]] used the words as a source of human readable entropy for generating private keys, dubbed a "seed phrase").  One can use an arbitrary word list, as long as one knows what encoding one is using.  Thus there are [[https://github.com/bitcoin/bips/blob/master/bip-0039/bip-0039-wordlists.md][word-lists for multiple languages]].  However, in our context, since identifiers are supposed to be shared, having parties using different word list creates a potential for error.  But settling on using one list of English words might be viewed as [[https://en.wiktionary.org/wiki/Anglocentrism][anglocentrism]].  This issue is left open for discussion.
+* Conversion of Addresses
+Let us try converting a Ricochet addresses in our base-2048 format.  An example from the [[https://ricochet.im/][Ricochet website]] is ~ricochet:rs7ce36jsj24ogfw~.  We assume that it is encoded in base-36 (decimal digits + lower-case ASCII letters), and take the 16 characters after the colon.
 
-For simplicity (see: fast prototype), we have two functions, ~base_n_to_dec()~ and ~dec_to_base_n()~.  
+In the Python code below, we have two functions, ~base_n_to_dec()~ and ~dec_to_base_n()~.  
 
-- ~base_n_to_dec()~ takes a baseN encoded number, baseN itself, and a dictionary that maps baseN digits to decimal numbers.  It returns the baseN encoded number and returns it encoded in base 10.
+- ~base_n_to_dec()~ takes a base-N encoded number, N itself, and a dictionary that maps base-N digits to decimal numbers.  It returns the base-N encoded number and returns it encoded in base-10.
 - ~dec_to_base_n()~ is the inverse of this operation
 
 This is a proof of concept, so try to ignore implementation peculiarities and inefficiencies.
 
 #+BEGIN_SRC python :results output :session convert
-def base_n_to_dec(base_n_number, base_n, baseN_to_dec_dict):
+def base_n_to_dec(base_n_number, base, baseN_to_dec_dict):
     ret = 0
     for i, c in enumerate(base_n_number[::-1]):
-        ret += (base_n ** i) * baseN_to_dec_dict[c]
+        ret += (base ** i) * baseN_to_dec_dict[c]
     return ret
 
 def dec_to_base_n(number, base, dec_to_baseN_dict):
@@ -50,6 +61,10 @@ def dec_to_base_n(number, base, dec_to_baseN_dict):
 #+END_SRC
 
 #+RESULTS:
+: Python 3.6.4 |Anaconda, Inc.| (default, Jan 16 2018, 18:10:19) 
+: [GCC 7.2.0] on linux
+: Type "help", "copyright", "credits" or "license" for more information.
+: python.el: native completion setup loaded
 
 Now let's get our mapping from base36 to decimal:
 
@@ -60,7 +75,6 @@ base36_to_dec_dict = dict((c, i) for i, c in enumerate(base36))
 dec_to_base36_dict = dict((i, c) for i, c in enumerate(base36))
 
 base36_address = "rs7ce36jsj24ogfw"
-base36_address = "vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd" # (onionv3 address)
 
 base10_address = base_n_to_dec(base36_address, 36, base36_to_dec_dict)
 
@@ -105,15 +119,17 @@ assert(base36_address == reverse_verify)
 #+END_SRC
 
 #+RESULTS:
-: 1260709712996318955898685272226231504720057513191589823776137029904096611564534973626421
-: ['access', 'cat', 'pig', 'erase', 'suggest', 'tumble', 'enemy', 'bonus', 'client', 'dentist', 'offer', 'kitten', 'topple', 'tired', 'lake', 'push', 'ocean', 'version', 'solid', 'virus', 'toddler', 'soft', 'kite', 'eternal', 'exit', 'faint', 'allow']
-: 27
+: 6142195001475658028508476
+: ['agree', 'pipe', 'dry', 'song', 'piece', 'bind', 'better', 'pole']
+: 8
 
-Okay then, what do we have here now?  An 8 word long phrase, replacing a 16 character long string.  Is this an improvement from a usability standpoint?
+Okay then, what do we have here now?  An 8 word long phrase (~[agree, pipe, dry, song, piece, bind, better, pole]~), replacing a 16 character long string.  Is this an improvement from a usability standpoint?  We cannot say authoritatively without user surveys, but we believe not.
 
-Things get worse when you use an onion v3 address.  A 56 character long base36 string, which we believe is the typical length of an onion v3 address, is represented by 27 words.  This does not seem workable at all.
+Things get worse when you use an onion-v3 address, which is the format likely to be used by cwtch.  A 56 character long base-36 string ( ~vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd~), which we believe is the typical length of an onion-v3 address, is represented by 27 words.   This does not seem workable at all.
 * Longer word list
-What if we used a longer word list? This quick and dirty approach [[https://gist.github.com/h3xx/1976236][copies a file]] with around 100k words (scraped from an online dictionary).  If this approach were adopted, a cleaned version would be used.
+What if we used a longer word list?  
+
+Here, we use the same method as before, but with a word list [[https://gist.github.com/h3xx/1976236][wiki-100k.txt]] of length around 100k (scraped from an online dictionary, and a tad untidy).  
 #+BEGIN_SRC python :results output :session convert
 with open("wiki-100k.txt") as f:
     english_words_100k_list = f.read().splitlines() 
@@ -128,9 +144,9 @@ base100k_address = dec_to_base_n(base10_address, len(base100K), dec_to_base100K_
 
 #+RESULTS:
 
-For the Ricochet address format, this returns a much more workable 5 word long string.  The Onionv3 address is around 18 words long.  However, in this approach the word list is around 800KB in size.
+For the Ricochet address format, this returns a more compact 5 word long string.  The onion-v3 address is around 18 words long, which is still beyond reasonable bounds.  A key weakness in this approach however is that the word list is around 800KB in size.  Though not unworkable, it is a poor allocation of resources to use so much storage, and would raise the barrier of entry for using such a system.
 * Using Base56
-An alternative to using base36 is base56, a format popularised by Bitcoin addresses.  In this format, easily confused characters such as capital o (O) and numeric zero (0) are removed from the symbol set.
+An alternative to using base36 is base56, a format popularised by Bitcoin addresses.  In this format, easily confused characters such as capital oh (O) and numeric zero (0) are removed from the symbol set.
 #+BEGIN_SRC python :results output :session convert
 base56 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 dec_to_base56_dict = dict((i, c) for i, c in enumerate(base56))
@@ -142,14 +158,18 @@ print(len(base56_address))
 #+END_SRC
 
 #+RESULTS:
-: UVEhFhp55ZtkrSJuYaqNArfemiQ2Q8xrTAbVYe5VC86qtvq1eW
-: 50
+: 34JXNQZJXJsXri5
+: 15
 
-In the encoding, our Ricochet format address is now 15 characters, down from 16.  Our OnionV3 address is 50 characters, down from 56.  It is clear that the length reduction is not worth the user-side complexity of including capital letters.
+In the encoding, our Ricochet format address is now 15 characters, down from 16.  Our onion-v3 address is 50 characters, down from 56.  It is clear that the length reduction is not worth the user-side complexity of including capital letters.
 * Conclusion 
-The problem of having human-usable unique identifiers in a decentralised system is an open question, and this work attempts to explore some of the possibilities.  Using some sort of decentralised DNS system such as NameCoin or Blockstack is also a possibility, but creates a bit-trail that some users might be unwilling to make.
+The problem of having human-usable unique identifiers in a decentralised system is an open question, and this work attempts to explore one of the possible.  It seems that for most real-world applications, having long addresses represented by human readable word strings is not practical, since these addresses tend to be too long.
+
+Using some sort of decentralised DNS system such as NameCoin or Blockstack is also a possibility, but creates a bit-trail that some users might be unwilling to make.
+
+You can find the word lists we used on our [[https://github.com/Wheest/mnemonic][Github repo for this exploration]].
 * Addendum
-After sharing this post with the cwtch community, I was directed to a [[https://github.com/ricochet-im/ricochet/issues/128#issuecomment-107001948][previous exploration of the idea]] from SJL.  Some of the conclusions were similar, however with an interesting additional component.
+After sharing this post with the cwtch community, I was directed to a [[https://github.com/ricochet-im/ricochet/issues/128#issuecomment-107001948][previous exploration of the idea]] from SJL.  Some of the conclusions were similar, however the work featured an interesting additional component.
 
 This involved using a different word list for each word in a mnemonic, i.e. the first is chosen from an adjective list, the next to a noun, then verb, etc.  This would form something like a sentence, as can be seen in SJL's examples:
 
